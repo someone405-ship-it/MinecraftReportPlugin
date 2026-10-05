@@ -1,44 +1,79 @@
-# ============================================
-# Minecraft Report Plugin - Configuration
-# ============================================
+# ============================================================
+#  Minecraft Elite Report Plugin - Advanced Configuration
+# ============================================================
 
 # Discord Webhook URL (REQUIRED)
 webhook-url: "https://discord.com/api/webhooks/1556496398046724107/g2m--vMPw50fKJo3XNxoNlFsfWQd7gjR69G7KpSWtNHv6u8D8IrcOzUrhlPhWT4MxCwA"
 
-# Server name shown in the embed
-server-name: "My Minecraft Server"
+# Server display name in embeds
+server-name: "Elite Minecraft Network"
 
-# Embed settings
+# ============================================================
+#  EMBED STYLING (Ultra Fancy)
+# ============================================================
 embed:
-  # Color in decimal (e.g. 5763719 = green, 15158332 = red, 3447003 = blue)
-  color: 15158332
-  # Title of the embed
-  title: "🚨 New Player Report"
-  # Footer text
-  footer: "Minecraft Report System • Anti-Spam Protected"
+  color: 16711680                    # Bright red
+  title: "🚨 PLAYER REPORT RECEIVED"
+  footer: "Elite Report System • GUI • Anti-Spam • Weekly Limits"
+  show-body-render: true             # Show 3D body render of reported player
+  show-reporter-skin: true
+  use-code-blocks: true
+  mention-role-id: ""                # Optional: Discord role ID to ping
 
-# Cooldown settings (in seconds)
+# ============================================================
+#  COOLDOWNS & ANTI-SPAM
+# ============================================================
 cooldowns:
-  # Global cooldown between any reports from the same player (prevents spam)
-  global-seconds: 60
-  # How long until the same player can be reported again by the same reporter (1 week = 604800 seconds)
-  same-player-seconds: 604800
+  global-seconds: 45                 # Seconds between any reports
+  same-player-seconds: 604800        # 7 days
+  max-reports-per-hour: 5            # Hard limit per hour
 
-# Messages (supports color codes with &)
+# ============================================================
+#  GUI SETTINGS
+# ============================================================
+gui:
+  enabled: true
+  title-player-select: "&8[&cReport&8] &7Select a player"
+  title-reason-select: "&8[&cReport&8] &7Select a reason"
+  title-confirm: "&8[&cReport&8] &7Confirm Report"
+  player-heads: true
+
+# ============================================================
+#  PREDEFINED REASON CATEGORIES (shown in GUI)
+# ============================================================
+reasons:
+  - "Griefing / Destroying builds"
+  - "Hacking / Cheating (KillAura, Fly, X-Ray...)"
+  - "Toxicity / Harassment / Racism"
+  - "Spamming chat or commands"
+  - "Scamming / Stealing items"
+  - "Exploiting bugs / Duping"
+  - "Inappropriate builds / Maps"
+  - "Other (type reason in chat after)"
+
+# ============================================================
+#  MESSAGES
+# ============================================================
 messages:
-  prefix: "&8[&cReport&8] &r"
-  success: "&aYour report against &e%target% &ahas been submitted successfully!"
-  player-not-found: "&cPlayer &e%target% &cwas not found (they may be offline)."
+  prefix: "&8[&c&lREPORT&8] &r"
+  success: "&a✔ Report against &e%target% &asubmitted! &7(ID: &f%id%&7)"
+  player-not-found: "&cPlayer &e%target% &cwas not found."
   cannot-report-self: "&cYou cannot report yourself!"
-  global-cooldown: "&cPlease wait &e%time% &cbefore submitting another report."
-  same-player-cooldown: "&cYou already reported &e%target% &crecently. You can report them again in &e%time%&c."
-  no-permission: "&cYou do not have permission to use this command."
-  usage: "&cUsage: /report <player> <reason>"
-  reason-too-short: "&cPlease provide a more detailed reason (at least 5 characters)."
-  webhook-error: "&cFailed to send the report. Please contact an administrator."
+  global-cooldown: "&c⏳ Wait &e%time% &cbefore another report."
+  same-player-cooldown: "&cYou already reported &e%target%&c. Try again in &e%time%&c."
+  hourly-limit: "&cHourly report limit reached (&e%max%&c)."
+  no-permission: "&cNo permission."
+  usage: "&c/report <player> [reason] &7or &e/report &7for GUI"
+  reason-too-short: "&cReason too short (min 5 chars)."
+  webhook-error: "&cFailed to send report. Contact admin."
+  report-closed: "&aReport &e%id% &aclosed."
+  no-reports: "&7No open reports."
+  staff-notify: "&c[REPORT] &e%reporter% &7→ &c%target% &7| &f%reason%"
 
-# Minimum reason length
+# ============================================================
+#  GENERAL
+# ============================================================
 min-reason-length: 5
-
-# Whether offline players can be reported (uses name lookup)
 allow-offline-reports: true
+staff-permission: "reportplugin.staff"
+sound-on-report: true
