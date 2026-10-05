@@ -4,7 +4,6 @@ import com.reportplugin.ReportPlugin;
 import com.reportplugin.gui.ReportGUI;
 import com.reportplugin.managers.CooldownManager;
 import com.reportplugin.managers.ReportManager;
-import com.reportplugin.utils.DiscordWebhook;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -15,18 +14,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Handles custom "Other" reasons typed in chat after selecting Other in the GUI.
- */
 public class ChatListener implements Listener {
 
     private final ReportPlugin plugin;
 
-    // Players waiting to type a custom reason
-    public static final Map<UUID, UUID> waitingForReason = new HashMap<>(); // reporter -> target
+    public static final Map<UUID, UUID> waitingForReason = new HashMap<>();
 
     public ChatListener(ReportPlugin plugin) {
         this.plugin = plugin;
@@ -44,6 +40,7 @@ public class ChatListener implements Listener {
 
         if (message.equalsIgnoreCase("cancel")) {
             waitingForReason.remove(reporterUUID);
+            ReportGUI.selectedPriority.remove(reporterUUID);
             player.sendMessage(color("&cReport cancelled."));
             return;
         }
@@ -55,14 +52,21 @@ public class ChatListener implements Listener {
         }
 
         UUID targetUUID = waitingForReason.remove(reporterUUID);
+        String priority = ReportGUI.selectedPriority.getOrDefault(reporterUUID, "medium");
+        ReportGUI.selectedPriority.remove(reporterUUID);
+
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetUUID);
         String targetName = target.getName() != null ? target.getName() : "Unknown";
 
-        // Must run the rest on the main thread
-        Bukkit.getScheduler().runTask(plugin, () -> submitCustomReason(player, target, targetName, message));
+        Bukkit.getScheduler().runTask(plugin, () -> submitCustomReason(player, target, targetName, message, priority));
     }
 
-    private void submitCustomReason(Player reporter, OfflinePlayer target, String targetName, String reason) {
+    private void submitCustomReason(Player reporter, OfflinePlayer target, String targetName, String reason, String priority) {
+        if (isBlacklisted(targetName)) {
+            reporter.sendMessage(color(plugin.getConfig().getString("messages.blacklisted")));
+            return;
+        }
+
         CooldownManager cm = plugin.getCooldownManager();
         ReportManager rm = plugin.getReportManager();
         UUID reporterUUID = reporter.getUniqueId();
@@ -80,13 +84,15 @@ public class ChatListener implements Listener {
                         .replace("%time%", formatTime(cm.getSamePlayerRemaining(reporterUUID, targetUUID)))));
                 return;
             }
-            int maxHourly = plugin.getConfig().getInt("cooldowns.max-reports-per-hour", 5);
+            int maxHourly = plugin.getConfig().getInt("cooldowns.max-reports-per-hour", 6);
             if (rm.getReportsByReporterLastHour(reporterUUID) >= maxHourly) {
                 reporter.sendMessage(color(plugin.getConfig().getString("messages.hourly-limit")
                         .replace("%max%", String.valueOf(maxHourly))));
                 return;
             }
         }
+
+        boolean anonymous = plugin.getConfig().getBoolean("features.anonymous-reporting", false);
 
         String reportId = rm.createReport(
                 reporterUUID, reporter.getName(),
@@ -98,21 +104,26 @@ public class ChatListener implements Listener {
                 reporter.getLocation().getZ()
         );
 
-        boolean ok = plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId);
+        boolean ok = plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId, priority, anonymous);
 
         if (ok) {
             cm.applyGlobalCooldown(reporterUUID);
             cm.applySamePlayerCooldown(reporterUUID, targetUUID);
 
-            reporter.sendMessage(color(plugin.getConfig().getString("messages.success")
+            String msgKey = anonymous ? "messages.anonymous-success" : "messages.success";
+            reporter.sendMessage(color(plugin.getConfig().getString(msgKey)
                     .replace("%target%", targetName)
                     .replace("%id%", reportId)));
 
-            // Notify staff
+            if (plugin.getConfig().getBoolean("sound-on-success", true)) {
+                reporter.playSound(reporter.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
+            }
+
             String staffMsg = plugin.getConfig().getString("messages.staff-notify", "")
-                    .replace("%reporter%", reporter.getName())
+                    .replace("%reporter%", anonymous ? "Anonymous" : reporter.getName())
                     .replace("%target%", targetName)
-                    .replace("%reason%", reason);
+                    .replace("%reason%", reason)
+                    .replace("%priority%", priority.toUpperCase());
             for (Player staff : Bukkit.getOnlinePlayers()) {
                 if (staff.hasPermission(plugin.getConfig().getString("staff-permission", "reportplugin.staff"))) {
                     staff.sendMessage(color(staffMsg));
@@ -124,6 +135,15 @@ public class ChatListener implements Listener {
         } else {
             reporter.sendMessage(color(plugin.getConfig().getString("messages.webhook-error")));
         }
+    }
+
+    private boolean isBlacklisted(String name) {
+        if (name == null) return false;
+        List<String> list = plugin.getConfig().getStringList("features.blacklist");
+        for (String s : list) {
+            if (s.equalsIgnoreCase(name)) return true;
+        }
+        return false;
     }
 
     private String color(String msg) {
