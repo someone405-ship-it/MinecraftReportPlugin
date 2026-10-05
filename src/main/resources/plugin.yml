@@ -1,0 +1,22 @@
+name: MinecraftReportPlugin
+version: '${project.version}'
+main: com.reportplugin.ReportPlugin
+api-version: '1.21'
+author: someone405
+description: Advanced player reporting with Discord webhooks, fancy embeds, avatars, cooldowns and weekly limits
+commands:
+  report:
+    description: Report a player to the staff team via Discord
+    usage: /report <player> <reason>
+    permission: reportplugin.report
+    aliases: [rep, reportplayer]
+permissions:
+  reportplugin.report:
+    description: Allows using the /report command
+    default: true
+  reportplugin.admin:
+    description: Admin permissions (bypass cooldowns, reload)
+    default: op
+  reportplugin.reload:
+    description: Reload the plugin configuration
+    default: op
