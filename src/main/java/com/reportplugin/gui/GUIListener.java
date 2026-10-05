@@ -34,7 +34,6 @@ public class GUIListener implements Listener {
         Player player = (Player) event.getWhoClicked();
         String title = ChatColor.stripColor(event.getView().getTitle());
 
-        // Only handle our GUIs
         if (!title.contains("Select a player") && !title.contains("Select a reason") && !title.contains("Confirm Report")) {
             return;
         }
@@ -45,7 +44,7 @@ public class GUIListener implements Listener {
 
         ItemMeta meta = clicked.getItemMeta();
 
-        // ========== PLAYER SELECT ==========
+        // PLAYER SELECT
         if (title.contains("Select a player")) {
             if (clicked.getType().name().contains("BARRIER")) {
                 player.closeInventory();
@@ -65,7 +64,7 @@ public class GUIListener implements Listener {
             return;
         }
 
-        // ========== REASON SELECT ==========
+        // REASON SELECT
         if (title.contains("Select a reason")) {
             if (clicked.getType().name().contains("ARROW")) {
                 gui.openPlayerSelect(player);
@@ -79,8 +78,7 @@ public class GUIListener implements Listener {
             if (reason != null) {
                 if (reason.toLowerCase().contains("other")) {
                     player.closeInventory();
-                    player.sendMessage(color("&ePlease type the reason in chat now (or type &ccancel&e):"))
-                    // We could add a chat listener for custom reason, but for simplicity we open confirm with placeholder
+                    player.sendMessage(color("&ePlease type the reason in chat now (or type &ccancel&e):"));
                     gui.openConfirm(player, "Other - (player will specify)");
                 } else {
                     gui.openConfirm(player, reason);
@@ -89,7 +87,7 @@ public class GUIListener implements Listener {
             return;
         }
 
-        // ========== CONFIRM ==========
+        // CONFIRM
         if (title.contains("Confirm Report")) {
             if (clicked.getType().name().contains("RED_WOOL") || clicked.getType().name().contains("BARRIER")) {
                 player.closeInventory();
@@ -118,7 +116,6 @@ public class GUIListener implements Listener {
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetUUID);
         String targetName = target.getName() != null ? target.getName() : "Unknown";
 
-        // Re-check cooldowns etc.
         CooldownManager cm = plugin.getCooldownManager();
         ReportManager rm = plugin.getReportManager();
 
@@ -143,7 +140,6 @@ public class GUIListener implements Listener {
             }
         }
 
-        // Create report ID and send
         String reportId = rm.createReport(
                 reporter.getUniqueId(), reporter.getName(),
                 targetUUID, targetName,
@@ -165,7 +161,6 @@ public class GUIListener implements Listener {
                     .replace("%target%", targetName)
                     .replace("%id%", reportId)));
 
-            // Notify staff
             String staffMsg = plugin.getConfig().getString("messages.staff-notify", "")
                     .replace("%reporter%", reporter.getName())
                     .replace("%target%", targetName)
