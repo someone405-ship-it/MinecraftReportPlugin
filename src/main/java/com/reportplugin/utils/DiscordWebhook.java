@@ -128,20 +128,23 @@ public class DiscordWebhook {
 
         // ========== SECOND EMBED (Actions / Info) ==========
         JsonObject actions = new JsonObject();
-        actions.addProperty("title", "📋 Staff Actions");
+        actions.addProperty("title", "📋 Staff Actions (DiscordSRV)");
         actions.addProperty("color", 3447003);
         actions.addProperty("description",
+                "**Ban / Mute from Discord:**\n" +
+                "• `!ban " + targetName + " reason`\n" +
+                "• `!tempban " + targetName + " 7d reason`\n" +
+                "• `!mute " + targetName + " reason`\n" +
+                "• `!kick " + targetName + " reason`\n\n" +
                 "**In-game commands:**\n" +
-                "• `/reports` — List all open reports\n" +
-                "• `/reportview " + reportId + "` — View full details\n" +
-                "• `/reportclose " + reportId + "` — Mark as handled\n\n" +
-                "*Full interactive Discord buttons require a bot token (coming in future update).*");
+                "• `/reports` — List open reports\n" +
+                "• `/reportview " + reportId + "`\n" +
+                "• `/reportclose " + reportId + "`");
 
         // ========== PAYLOAD ==========
-        // Human-like name: shows as the reported player's name
         JsonObject payload = new JsonObject();
-        payload.addProperty("username", targetName);  // Looks like a real player
-        payload.addProperty("avatar_url", targetHead); // Uses the reported player's head as avatar
+        payload.addProperty("username", "Reported Users");          // Fixed human-like name as requested
+        payload.addProperty("avatar_url", targetHead);             // Still uses reported player's head
 
         // Optional role ping
         String roleId = plugin.getConfig().getString("embed.mention-role-id", "");
@@ -184,7 +187,7 @@ public class DiscordWebhook {
         if (code < 200 || code >= 300) {
             plugin.getLogger().warning("Discord webhook returned HTTP " + code);
         } else {
-            plugin.getLogger().info("Ultra-fancy report sent to Discord successfully.");
+            plugin.getLogger().info("Report sent to Discord successfully.");
         }
         connection.disconnect();
     }
