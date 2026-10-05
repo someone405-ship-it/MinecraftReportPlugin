@@ -60,7 +60,7 @@ public class DiscordWebhook {
         String serverName = plugin.getConfig().getString("server-name", "Minecraft Server");
         int color = plugin.getConfig().getInt("embed.color", 16711680);
         String title = plugin.getConfig().getString("embed.title", "🚨 PLAYER REPORT RECEIVED");
-        String footer = plugin.getConfig().getString("embed.footer", "Elite Report System");
+        String footer = plugin.getConfig().getString("embed.footer", "Reported Users");
 
         long unix = Instant.now().getEpochSecond();
 
@@ -75,19 +75,16 @@ public class DiscordWebhook {
                 "> **Status:** 🔴 **OPEN**\n" +
                 "> **Priority:** High");
 
-        // Author = Reporter
         JsonObject author = new JsonObject();
         author.addProperty("name", "Reported by " + reporterName);
         author.addProperty("icon_url", reporterHead);
         author.addProperty("url", "https://namemc.com/profile/" + reporterUUID);
         main.add("author", author);
 
-        // Thumbnail = reported head
         JsonObject thumb = new JsonObject();
         thumb.addProperty("url", targetHead);
         main.add("thumbnail", thumb);
 
-        // Big image = body render of reported player
         if (plugin.getConfig().getBoolean("embed.show-body-render", true)) {
             JsonObject image = new JsonObject();
             image.addProperty("url", targetBody);
@@ -116,9 +113,6 @@ public class DiscordWebhook {
         fields.add(createField("⏱️ Submitted",
                 "<t:" + unix + ":F>\n(<t:" + unix + ":R>)", true));
 
-        fields.add(createField("📊 Quick Stats",
-                "Reporter total (hour): check `/reports`", true));
-
         main.add("fields", fields);
 
         JsonObject footerObj = new JsonObject();
@@ -126,27 +120,22 @@ public class DiscordWebhook {
         footerObj.addProperty("icon_url", targetHead);
         main.add("footer", footerObj);
 
-        // ========== SECOND EMBED (Actions / Info) ==========
+        // ========== SECOND EMBED ==========
         JsonObject actions = new JsonObject();
-        actions.addProperty("title", "📋 Staff Actions (DiscordSRV)");
+        actions.addProperty("title", "📋 Staff Actions");
         actions.addProperty("color", 3447003);
         actions.addProperty("description",
-                "**Ban / Mute from Discord:**\n" +
-                "• `!ban " + targetName + " reason`\n" +
-                "• `!tempban " + targetName + " 7d reason`\n" +
-                "• `!mute " + targetName + " reason`\n" +
-                "• `!kick " + targetName + " reason`\n\n" +
                 "**In-game commands:**\n" +
-                "• `/reports` — List open reports\n" +
-                "• `/reportview " + reportId + "`\n" +
-                "• `/reportclose " + reportId + "`");
+                "• `/reports` — List all open reports\n" +
+                "• `/reportview " + reportId + "` — View full details\n" +
+                "• `/reportclose " + reportId + "` — Mark as handled\n\n" +
+                "*This message was sent by the Report plugin via webhook.*");
 
         // ========== PAYLOAD ==========
         JsonObject payload = new JsonObject();
-        payload.addProperty("username", "Reported Users");          // Fixed human-like name as requested
-        payload.addProperty("avatar_url", targetHead);             // Still uses reported player's head
+        payload.addProperty("username", "Reported Users");
+        payload.addProperty("avatar_url", targetHead);
 
-        // Optional role ping
         String roleId = plugin.getConfig().getString("embed.mention-role-id", "");
         if (roleId != null && !roleId.isEmpty()) {
             payload.addProperty("content", "<@&" + roleId + "> New report submitted!");
@@ -173,7 +162,7 @@ public class DiscordWebhook {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("User-Agent", "MinecraftEliteReportPlugin/2.0");
+        connection.setRequestProperty("User-Agent", "MinecraftReportPlugin/2.1");
         connection.setDoOutput(true);
 
         String json = gson.toJson(payload);
