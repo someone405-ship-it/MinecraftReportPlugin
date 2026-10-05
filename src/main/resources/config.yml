@@ -1,8 +1,11 @@
 # ============================================================
 #  ELITE REPORT PLUGIN - Ultimate Webhook Edition
 # ============================================================
+# SECURITY: Keep this file private. Never share your webhook URL.
+# Anyone with the URL can post into your Discord channel.
+# ============================================================
 
-webhook-url: "https://discord.com/api/webhooks/1556496398046724107/g2m--vMPw50fKJo3XNxoNlFsfWQd7gjR69G7KpSWtNHv6u8D8IrcOzUrhlPhWT4MxCwA"
+webhook-url: "https://discord.com/api/webhooks/1556659823154700410/uhM9vd6yI-DuRjzYxBf3Nj6QmECg58CpbQnMxfVCCzr0UTNGELykYrgEo7uBhpb0O9Ue"
 
 server-name: "Elite Minecraft Network"
 
@@ -10,27 +13,25 @@ server-name: "Elite Minecraft Network"
 #  ULTRA FANCY EMBED SETTINGS
 # ============================================================
 embed:
-  # Default color (overridden by priority)
   color: 16711680
   title: "🚨 NEW PLAYER REPORT"
   footer: "Reported Users • Elite Anti-Cheat System"
   show-body-render: true
   show-reporter-skin: true
-  mention-role-id: ""                    # Discord role ID to ping (optional)
+  mention-role-id: ""
 
-  # Priority colors (decimal)
   colors:
-    low: 5763719          # Green
-    medium: 16776960      # Yellow
-    high: 16744192        # Orange
-    critical: 16711680    # Red
+    low: 5763719
+    medium: 16776960
+    high: 16744192
+    critical: 16711680
 
 # ============================================================
 #  COOLDOWNS & LIMITS
 # ============================================================
 cooldowns:
   global-seconds: 30
-  same-player-seconds: 604800          # 7 days
+  same-player-seconds: 604800
   max-reports-per-hour: 6
 
 # ============================================================
@@ -46,7 +47,7 @@ gui:
   show-offline-section: false
 
 # ============================================================
-#  REASONS (shown in GUI) + optional priority suggestion
+#  REASONS
 # ============================================================
 reasons:
   - name: "Griefing / Destroying builds"
@@ -70,10 +71,9 @@ reasons:
 #  EXTRA FEATURES
 # ============================================================
 features:
-  anonymous-reporting: false           # If true, hides reporter name in Discord
-  show-playtime: false                 # Requires extra plugin (future)
-  blacklist: []                        # Players that cannot be reported (names)
-  # Example: ["Notch", "Dinnerbone"]
+  anonymous-reporting: false
+  show-playtime: false
+  blacklist: []
 
 # ============================================================
 #  MESSAGES
@@ -103,4 +103,4 @@ min-reason-length: 5
 allow-offline-reports: true
 staff-permission: "reportplugin.staff"
 sound-on-report: true
-sound-on-success: true                 # Sound for the reporter too
+sound-on-success: true
