@@ -27,19 +27,16 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
+        if (!(sender instanceof Player reporter)) {
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
             return true;
         }
-
-        Player reporter = (Player) sender;
 
         if (!reporter.hasPermission("reportplugin.report")) {
             reporter.sendMessage(color(plugin.getConfig().getString("messages.no-permission")));
             return true;
         }
 
-        // No args → open GUI
         if (args.length == 0) {
             if (plugin.getConfig().getBoolean("gui.enabled", true)) {
                 plugin.getReportGUI().openPlayerSelect(reporter);
@@ -57,13 +54,11 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
         String targetName = args[0];
         String reason = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
 
-        int minLength = plugin.getConfig().getInt("min-reason-length", 5);
-        if (reason.length() < minLength) {
+        if (reason.length() < plugin.getConfig().getInt("min-reason-length", 5)) {
             reporter.sendMessage(color(plugin.getConfig().getString("messages.reason-too-short")));
             return true;
         }
 
-        // Blacklist check
         if (isBlacklisted(targetName)) {
             reporter.sendMessage(color(plugin.getConfig().getString("messages.blacklisted")));
             return true;
@@ -84,19 +79,18 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
         ReportManager rm = plugin.getReportManager();
         UUID reporterUUID = reporter.getUniqueId();
         UUID targetUUID = target.getUniqueId();
+        String resolvedName = target.getName() != null ? target.getName() : targetName;
 
         if (!reporter.hasPermission("reportplugin.admin")) {
             if (cm.isOnGlobalCooldown(reporterUUID)) {
-                long remaining = cm.getGlobalRemaining(reporterUUID);
                 reporter.sendMessage(color(plugin.getConfig().getString("messages.global-cooldown")
-                        .replace("%time%", formatTime(remaining))));
+                        .replace("%time%", formatTime(cm.getGlobalRemaining(reporterUUID)))));
                 return true;
             }
             if (cm.hasReportedRecently(reporterUUID, targetUUID)) {
-                long remaining = cm.getSamePlayerRemaining(reporterUUID, targetUUID);
                 reporter.sendMessage(color(plugin.getConfig().getString("messages.same-player-cooldown")
-                        .replace("%target%", target.getName() != null ? target.getName() : targetName)
-                        .replace("%time%", formatTime(remaining))));
+                        .replace("%target%", resolvedName)
+                        .replace("%time%", formatTime(cm.getSamePlayerRemaining(reporterUUID, targetUUID)))));
                 return true;
             }
             int maxHourly = plugin.getConfig().getInt("cooldowns.max-reports-per-hour", 6);
@@ -107,49 +101,47 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        String priority = "medium"; // default for command usage
         boolean anonymous = plugin.getConfig().getBoolean("features.anonymous-reporting", false);
+        String priority = "medium";
 
+        // Instant memory ops
         String reportId = rm.createReport(
                 reporterUUID, reporter.getName(),
-                targetUUID, target.getName() != null ? target.getName() : targetName,
-                reason,
+                targetUUID, resolvedName, reason,
                 reporter.getWorld().getName(),
                 reporter.getLocation().getX(),
                 reporter.getLocation().getY(),
                 reporter.getLocation().getZ()
         );
 
-        boolean success = plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId, priority, anonymous);
+        cm.applyGlobalCooldown(reporterUUID);
+        cm.applySamePlayerCooldown(reporterUUID, targetUUID);
 
-        if (success) {
-            cm.applyGlobalCooldown(reporterUUID);
-            cm.applySamePlayerCooldown(reporterUUID, targetUUID);
+        // Instant feedback
+        String msgKey = anonymous ? "messages.anonymous-success" : "messages.success";
+        reporter.sendMessage(color(plugin.getConfig().getString(msgKey)
+                .replace("%target%", resolvedName)
+                .replace("%id%", reportId)));
 
-            String msgKey = anonymous ? "messages.anonymous-success" : "messages.success";
-            reporter.sendMessage(color(plugin.getConfig().getString(msgKey)
-                    .replace("%target%", target.getName() != null ? target.getName() : targetName)
-                    .replace("%id%", reportId)));
+        if (plugin.getConfig().getBoolean("sound-on-success", true)) {
+            reporter.playSound(reporter.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
+        }
 
-            if (plugin.getConfig().getBoolean("sound-on-success", true)) {
-                reporter.playSound(reporter.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
+        // Async Discord
+        plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId, priority, anonymous);
+
+        String staffMsg = plugin.getConfig().getString("messages.staff-notify", "")
+                .replace("%reporter%", anonymous ? "Anonymous" : reporter.getName())
+                .replace("%target%", resolvedName)
+                .replace("%reason%", reason)
+                .replace("%priority%", priority.toUpperCase());
+        String staffPerm = plugin.getConfig().getString("staff-permission", "reportplugin.staff");
+        boolean sound = plugin.getConfig().getBoolean("sound-on-report", true);
+        for (Player staff : Bukkit.getOnlinePlayers()) {
+            if (staff.hasPermission(staffPerm)) {
+                staff.sendMessage(color(staffMsg));
+                if (sound) staff.playSound(staff.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
             }
-
-            String staffMsg = plugin.getConfig().getString("messages.staff-notify", "")
-                    .replace("%reporter%", anonymous ? "Anonymous" : reporter.getName())
-                    .replace("%target%", target.getName() != null ? target.getName() : targetName)
-                    .replace("%reason%", reason)
-                    .replace("%priority%", priority.toUpperCase());
-            for (Player staff : Bukkit.getOnlinePlayers()) {
-                if (staff.hasPermission(plugin.getConfig().getString("staff-permission", "reportplugin.staff"))) {
-                    staff.sendMessage(color(staffMsg));
-                    if (plugin.getConfig().getBoolean("sound-on-report", true)) {
-                        staff.playSound(staff.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
-                    }
-                }
-            }
-        } else {
-            reporter.sendMessage(color(plugin.getConfig().getString("messages.webhook-error")));
         }
 
         return true;
@@ -157,8 +149,7 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
 
     private boolean isBlacklisted(String name) {
         if (name == null) return false;
-        List<String> list = plugin.getConfig().getStringList("features.blacklist");
-        for (String s : list) {
+        for (String s : plugin.getConfig().getStringList("features.blacklist")) {
             if (s.equalsIgnoreCase(name)) return true;
         }
         return false;
@@ -177,8 +168,8 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
     }
 
     private String color(String message) {
-        String prefix = plugin.getConfig().getString("messages.prefix", "");
-        return ChatColor.translateAlternateColorCodes('&', prefix + message);
+        return ChatColor.translateAlternateColorCodes('&',
+                plugin.getConfig().getString("messages.prefix", "") + message);
     }
 
     private String formatTime(long seconds) {
