@@ -1,74 +1,100 @@
 # ============================================================
-#  Minecraft Elite Report Plugin - Advanced Configuration
+#  ELITE REPORT PLUGIN - Ultimate Webhook Edition
 # ============================================================
 
-# Discord Webhook URL (REQUIRED)
 webhook-url: "https://discord.com/api/webhooks/1556496398046724107/g2m--vMPw50fKJo3XNxoNlFsfWQd7gjR69G7KpSWtNHv6u8D8IrcOzUrhlPhWT4MxCwA"
 
-# Server display name in embeds
 server-name: "Elite Minecraft Network"
 
 # ============================================================
-#  EMBED STYLING (Ultra Fancy)
+#  ULTRA FANCY EMBED SETTINGS
 # ============================================================
 embed:
-  color: 16711680                    # Bright red
-  title: "🚨 PLAYER REPORT RECEIVED"
-  footer: "Elite Report System • GUI • Anti-Spam • Weekly Limits"
-  show-body-render: true             # Show 3D body render of reported player
+  # Default color (overridden by priority)
+  color: 16711680
+  title: "🚨 NEW PLAYER REPORT"
+  footer: "Reported Users • Elite Anti-Cheat System"
+  show-body-render: true
   show-reporter-skin: true
-  use-code-blocks: true
-  mention-role-id: ""                # Optional: Discord role ID to ping
+  mention-role-id: ""                    # Discord role ID to ping (optional)
+
+  # Priority colors (decimal)
+  colors:
+    low: 5763719          # Green
+    medium: 16776960      # Yellow
+    high: 16744192        # Orange
+    critical: 16711680    # Red
 
 # ============================================================
-#  COOLDOWNS & ANTI-SPAM
+#  COOLDOWNS & LIMITS
 # ============================================================
 cooldowns:
-  global-seconds: 45                 # Seconds between any reports
-  same-player-seconds: 604800        # 7 days
-  max-reports-per-hour: 5            # Hard limit per hour
+  global-seconds: 30
+  same-player-seconds: 604800          # 7 days
+  max-reports-per-hour: 6
 
 # ============================================================
-#  GUI SETTINGS
+#  GUI
 # ============================================================
 gui:
   enabled: true
-  title-player-select: "&8[&cReport&8] &7Select a player"
-  title-reason-select: "&8[&cReport&8] &7Select a reason"
-  title-confirm: "&8[&cReport&8] &7Confirm Report"
+  title-player-select: "&8◆ &c&lREPORT &8◆ &7Select Player"
+  title-reason-select: "&8◆ &c&lREPORT &8◆ &7Select Reason"
+  title-priority-select: "&8◆ &c&lREPORT &8◆ &7Select Priority"
+  title-confirm: "&8◆ &c&lREPORT &8◆ &7Confirm"
   player-heads: true
+  show-offline-section: false
 
 # ============================================================
-#  PREDEFINED REASON CATEGORIES (shown in GUI)
+#  REASONS (shown in GUI) + optional priority suggestion
 # ============================================================
 reasons:
-  - "Griefing / Destroying builds"
-  - "Hacking / Cheating (KillAura, Fly, X-Ray...)"
-  - "Toxicity / Harassment / Racism"
-  - "Spamming chat or commands"
-  - "Scamming / Stealing items"
-  - "Exploiting bugs / Duping"
-  - "Inappropriate builds / Maps"
-  - "Other (type reason in chat after)"
+  - name: "Griefing / Destroying builds"
+    priority: high
+  - name: "Hacking / Cheating"
+    priority: critical
+  - name: "Toxicity / Harassment"
+    priority: medium
+  - name: "Spamming"
+    priority: low
+  - name: "Scamming / Stealing"
+    priority: high
+  - name: "Exploiting / Duping"
+    priority: critical
+  - name: "Inappropriate content"
+    priority: medium
+  - name: "Other (type in chat)"
+    priority: medium
+
+# ============================================================
+#  EXTRA FEATURES
+# ============================================================
+features:
+  anonymous-reporting: false           # If true, hides reporter name in Discord
+  show-playtime: false                 # Requires extra plugin (future)
+  blacklist: []                        # Players that cannot be reported (names)
+  # Example: ["Notch", "Dinnerbone"]
 
 # ============================================================
 #  MESSAGES
 # ============================================================
 messages:
   prefix: "&8[&c&lREPORT&8] &r"
-  success: "&a✔ Report against &e%target% &asubmitted! &7(ID: &f%id%&7)"
-  player-not-found: "&cPlayer &e%target% &cwas not found."
-  cannot-report-self: "&cYou cannot report yourself!"
-  global-cooldown: "&c⏳ Wait &e%time% &cbefore another report."
-  same-player-cooldown: "&cYou already reported &e%target%&c. Try again in &e%time%&c."
-  hourly-limit: "&cHourly report limit reached (&e%max%&c)."
+  success: "&a✔ Report against &e%target% &asubmitted! &7ID: &f%id%"
+  player-not-found: "&cPlayer &e%target% &cnot found."
+  cannot-report-self: "&cYou can't report yourself."
+  blacklisted: "&cThis player cannot be reported."
+  global-cooldown: "&c⏳ Wait &e%time% &cbefore reporting again."
+  same-player-cooldown: "&cYou already reported &e%target%&c. Wait &e%time%&c."
+  hourly-limit: "&cHourly limit reached (&e%max%&c reports)."
   no-permission: "&cNo permission."
-  usage: "&c/report <player> [reason] &7or &e/report &7for GUI"
+  usage: "&c/report [player] [reason] &7or &e/report &7for GUI"
   reason-too-short: "&cReason too short (min 5 chars)."
-  webhook-error: "&cFailed to send report. Contact admin."
+  webhook-error: "&cFailed to send report."
   report-closed: "&aReport &e%id% &aclosed."
   no-reports: "&7No open reports."
-  staff-notify: "&c[REPORT] &e%reporter% &7→ &c%target% &7| &f%reason%"
+  staff-notify: "&c⚡ REPORT &8| &e%reporter% &7→ &c%target% &8| &f%reason% &8| &7%priority%"
+  anonymous-success: "&a✔ Anonymous report submitted! &7ID: &f%id%"
 
 # ============================================================
 #  GENERAL
@@ -77,3 +103,4 @@ min-reason-length: 5
 allow-offline-reports: true
 staff-permission: "reportplugin.staff"
 sound-on-report: true
+sound-on-success: true                 # Sound for the reporter too
