@@ -3,20 +3,37 @@ version: '${project.version}'
 main: com.reportplugin.ReportPlugin
 api-version: '1.21'
 author: someone405
-description: Advanced player reporting with Discord webhooks, fancy embeds, avatars, cooldowns and weekly limits
+description: Elite player reporting with GUI, ultra-fancy Discord embeds, avatars, body renders, cooldowns, weekly limits & staff tools
 commands:
   report:
-    description: Report a player to the staff team via Discord
-    usage: /report <player> <reason>
+    description: Report a player (opens GUI or direct)
+    usage: /report [player] [reason]
     permission: reportplugin.report
     aliases: [rep, reportplayer]
+  reports:
+    description: List open reports (staff)
+    usage: /reports
+    permission: reportplugin.staff
+    aliases: [reportlist, viewreports]
+  reportview:
+    description: View a specific report
+    usage: /reportview <id>
+    permission: reportplugin.staff
+  reportclose:
+    description: Close a report
+    usage: /reportclose <id>
+    permission: reportplugin.staff
+  reportreload:
+    description: Reload configuration
+    usage: /reportreload
+    permission: reportplugin.admin
 permissions:
   reportplugin.report:
-    description: Allows using the /report command
+    description: Allows reporting players
     default: true
-  reportplugin.admin:
-    description: Admin permissions (bypass cooldowns, reload)
+  reportplugin.staff:
+    description: View and manage reports + receive notifications
     default: op
-  reportplugin.reload:
-    description: Reload the plugin configuration
+  reportplugin.admin:
+    description: Full admin (bypass cooldowns, reload)
     default: op
