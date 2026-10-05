@@ -56,7 +56,6 @@ public class DiscordWebhook {
         String reporterHead = "https://crafatar.com/avatars/" + reporterUUID + "?size=64&overlay";
         String targetHead = "https://crafatar.com/avatars/" + targetUUID + "?size=128&overlay";
         String targetBody = "https://crafatar.com/renders/body/" + targetUUID + "?scale=6&overlay";
-        String reporterBody = "https://crafatar.com/renders/body/" + reporterUUID + "?scale=4&overlay";
 
         String serverName = plugin.getConfig().getString("server-name", "Minecraft Server");
         int color = plugin.getConfig().getInt("embed.color", 16711680);
@@ -124,7 +123,7 @@ public class DiscordWebhook {
 
         JsonObject footerObj = new JsonObject();
         footerObj.addProperty("text", footer);
-        footerObj.addProperty("icon_url", "https://crafatar.com/avatars/8667ba71-b85a-4004-af54-457a9734eed7?size=32");
+        footerObj.addProperty("icon_url", targetHead);
         main.add("footer", footerObj);
 
         // ========== SECOND EMBED (Actions / Info) ==========
@@ -139,9 +138,10 @@ public class DiscordWebhook {
                 "*Full interactive Discord buttons require a bot token (coming in future update).*");
 
         // ========== PAYLOAD ==========
+        // Human-like name: shows as the reported player's name
         JsonObject payload = new JsonObject();
-        payload.addProperty("username", "🛡️ Elite Report System");
-        payload.addProperty("avatar_url", "https://crafatar.com/avatars/8667ba71-b85a-4004-af54-457a9734eed7?size=128&overlay");
+        payload.addProperty("username", targetName);  // Looks like a real player
+        payload.addProperty("avatar_url", targetHead); // Uses the reported player's head as avatar
 
         // Optional role ping
         String roleId = plugin.getConfig().getString("embed.mention-role-id", "");
