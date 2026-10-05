@@ -1,6 +1,7 @@
 package com.reportplugin.managers;
 
 import com.reportplugin.ReportPlugin;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -10,6 +11,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ReportManager {
@@ -18,6 +21,8 @@ public class ReportManager {
     private final File dataFile;
     private FileConfiguration data;
     private final AtomicInteger counter = new AtomicInteger(0);
+    private final Map<String, Report> reports = new ConcurrentHashMap<>();
+    private final AtomicBoolean saveQueued = new AtomicBoolean(false);
 
     public static class Report {
         public final String id;
@@ -29,7 +34,7 @@ public class ReportManager {
         public final long timestamp;
         public final String world;
         public final double x, y, z;
-        public boolean closed;
+        public volatile boolean closed;
 
         public Report(String id, UUID reporterUUID, String reporterName, UUID targetUUID, String targetName,
                       String reason, long timestamp, String world, double x, double y, double z) {
@@ -47,8 +52,6 @@ public class ReportManager {
             this.closed = false;
         }
     }
-
-    private final Map<String, Report> reports = new LinkedHashMap<>();
 
     public ReportManager(ReportPlugin plugin) {
         this.plugin = plugin;
@@ -68,11 +71,9 @@ public class ReportManager {
         data = YamlConfiguration.loadConfiguration(dataFile);
         reports.clear();
 
-        if (data.contains("counter")) {
-            counter.set(data.getInt("counter"));
-        }
+        if (data.contains("counter")) counter.set(data.getInt("counter"));
 
-        if (data.contains("reports")) {
+        if (data.contains("reports") && data.getConfigurationSection("reports") != null) {
             for (String key : data.getConfigurationSection("reports").getKeys(false)) {
                 String path = "reports." + key;
                 try {
@@ -94,10 +95,75 @@ public class ReportManager {
                 } catch (Exception ignored) {}
             }
         }
-        plugin.getLogger().info("Loaded " + reports.size() + " reports from disk.");
+        plugin.getLogger().info("Loaded " + reports.size() + " reports.");
+    }
+
+    /** Instant – returns ID immediately, disk write is async */
+    public String createReport(UUID reporterUUID, String reporterName, UUID targetUUID, String targetName,
+                               String reason, String world, double x, double y, double z) {
+        int num = counter.incrementAndGet();
+        String id = String.format("RPT-%s-%04d",
+                DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.systemDefault()).format(Instant.now()),
+                num);
+
+        Report report = new Report(id, reporterUUID, reporterName, targetUUID, targetName,
+                reason, System.currentTimeMillis(), world, x, y, z);
+        reports.put(id, report);
+        queueSave();
+        return id;
+    }
+
+    public Report getReport(String id) {
+        return reports.get(id);
+    }
+
+    public List<Report> getOpenReports() {
+        List<Report> open = new ArrayList<>();
+        for (Report r : reports.values()) {
+            if (!r.closed) open.add(r);
+        }
+        open.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
+        return open;
+    }
+
+    public boolean closeReport(String id) {
+        Report r = reports.get(id);
+        if (r == null || r.closed) return false;
+        r.closed = true;
+        queueSave();
+        return true;
+    }
+
+    public int getReportsByReporterLastHour(UUID reporter) {
+        long oneHourAgo = System.currentTimeMillis() - 3_600_000L;
+        int count = 0;
+        for (Report r : reports.values()) {
+            if (r.reporterUUID.equals(reporter) && r.timestamp >= oneHourAgo) count++;
+        }
+        return count;
+    }
+
+    private void queueSave() {
+        if (!saveQueued.compareAndSet(false, true)) return;
+        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+            try {
+                saveNow();
+            } finally {
+                saveQueued.set(false);
+            }
+        }, 40L);
     }
 
     public void save() {
+        if (Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, this::saveNow);
+        } else {
+            saveNow();
+        }
+    }
+
+    private synchronized void saveNow() {
+        if (data == null) data = new YamlConfiguration();
         data.set("counter", counter.get());
         data.set("reports", null);
 
@@ -121,52 +187,5 @@ public class ReportManager {
         } catch (IOException e) {
             plugin.getLogger().severe("Failed to save reports.yml: " + e.getMessage());
         }
-    }
-
-    public String createReport(UUID reporterUUID, String reporterName, UUID targetUUID, String targetName,
-                               String reason, String world, double x, double y, double z) {
-        int num = counter.incrementAndGet();
-        String id = String.format("RPT-%s-%04d",
-                DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneId.systemDefault()).format(Instant.now()),
-                num);
-
-        Report report = new Report(id, reporterUUID, reporterName, targetUUID, targetName,
-                reason, System.currentTimeMillis(), world, x, y, z);
-        reports.put(id, report);
-        save();
-        return id;
-    }
-
-    public Report getReport(String id) {
-        return reports.get(id);
-    }
-
-    public List<Report> getOpenReports() {
-        List<Report> open = new ArrayList<>();
-        for (Report r : reports.values()) {
-            if (!r.closed) open.add(r);
-        }
-        // newest first
-        open.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
-        return open;
-    }
-
-    public boolean closeReport(String id) {
-        Report r = reports.get(id);
-        if (r == null || r.closed) return false;
-        r.closed = true;
-        save();
-        return true;
-    }
-
-    public int getReportsByReporterLastHour(UUID reporter) {
-        long oneHourAgo = System.currentTimeMillis() - 3600_000L;
-        int count = 0;
-        for (Report r : reports.values()) {
-            if (r.reporterUUID.equals(reporter) && r.timestamp >= oneHourAgo) {
-                count++;
-            }
-        }
-        return count;
     }
 }
