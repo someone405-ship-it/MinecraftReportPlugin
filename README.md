@@ -1,115 +1,80 @@
 # Elite Minecraft Report Plugin
 
-**The most advanced free player reporting system** for Paper / Spigot 1.21+
-
-Ultra-fancy Discord embeds • Full GUI with player heads • Body renders • Report IDs • Weekly limits • Staff tools
-
-![Minecraft](https://img.shields.io/badge/Minecraft-1.21+-brightgreen)
-![Paper](https://img.shields.io/badge/Paper-Recommended-blue)
-![Version](https://img.shields.io/badge/Version-2.0-orange)
+Advanced player reporting system for Paper / Spigot 1.21+  
+**Pure Discord Webhook** • Fancy embeds • Full GUI • Anti-spam • Staff tools
 
 **Repository:** https://github.com/someone405-ship-it/MinecraftReportPlugin
 
 ---
 
-## ✨ Features (v2.0)
+## Features
 
-### Player Side
-- **`/report`** → Beautiful GUI with online player heads
-- **`/report <player> <reason>`** → Classic command still works
-- Predefined reason categories (Griefing, Hacking, Toxicity, etc.)
-- Custom reason support
+### Player
+- `/report` → Opens GUI with online player heads
+- `/report <player> <reason>` → Classic command
+- Predefined reason categories + **custom reason via chat** (Other)
 - Cannot report yourself
 - Offline player support
 
-### Anti-Spam & Limits
-- Global cooldown (default 45s)
-- **Same player can only be reported once per week** by the same reporter
+### Anti-Spam
+- Global cooldown (default 45 seconds)
+- Same player can only be reported **once per week** by the same reporter
 - Max reports per hour limit
-- All limits bypassable by admins
+- Admins bypass all limits
 
-### Discord (Ultra Fancy)
-- Multi-embed messages
-- Reporter avatar as author icon
-- Reported player **3D body render** as large image
-- Head thumbnail
-- Code-block formatted fields
-- Discord relative timestamps (`<t:...:R>`)
+### Discord (Webhook only)
+- Username: **Reported Users**
+- Avatar: Reported player's head
+- 3D body render of the reported player
+- Reporter head as author icon
 - Unique Report ID
-- Location + world of the reporter
+- Exact location + world
+- Discord timestamps
 - Optional role ping
-- Professional red styling + footer
 
-### Staff Tools
-- `/reports` — List all open reports
-- `/reportview <id>` — Full details of a report
-- `/reportclose <id>` — Mark as handled
-- `/reportreload` — Reload config + data
-- In-game notification + sound when a report arrives
-
-### Technical
-- Fully asynchronous webhook sending (zero lag)
-- Persistent storage (`reports.yml` + `cooldowns.yml`)
-- Unique Report IDs (`RPT-YYYYMMDD-0001`)
-- Tab completion
-- Fully configurable messages, colors, cooldowns, reasons, GUI titles
+### Staff
+- `/reports` — List open reports
+- `/reportview <id>` — Full details
+- `/reportclose <id>` — Close a report
+- `/reportreload` — Reload config
+- In-game notifications + sound when a report arrives
 
 ---
 
-## 📥 Installation
+## Installation
 
-1. Build or download the JAR
-2. Put it in `plugins/`
-3. Restart server
+1. Build with Maven (`mvn clean package`) or download the JAR
+2. Put the JAR in `plugins/`
+3. Restart the server
 4. Edit `plugins/MinecraftReportPlugin/config.yml` (webhook is already set)
-5. Restart / reload
-
-### Building
-```bash
-git clone https://github.com/someone405-ship-it/MinecraftReportPlugin.git
-cd MinecraftReportPlugin
-mvn clean package
-# JAR → target/MinecraftReportPlugin-1.0.0.jar
-```
+5. Restart / `/reportreload`
 
 ---
 
-## ⌨️ Commands
+## Commands
 
 | Command | Description | Permission |
 |---------|-------------|------------|
 | `/report` | Open GUI | `reportplugin.report` |
 | `/report <player> <reason>` | Direct report | `reportplugin.report` |
 | `/reports` | List open reports | `reportplugin.staff` |
-| `/reportview <id>` | View report details | `reportplugin.staff` |
-| `/reportclose <id>` | Close a report | `reportplugin.staff` |
+| `/reportview <id>` | View report | `reportplugin.staff` |
+| `/reportclose <id>` | Close report | `reportplugin.staff` |
 | `/reportreload` | Reload config | `reportplugin.admin` |
 
 ---
 
-## 🖼️ Discord Preview
+## Recent Improvements & Bugfixes
 
-The embed includes:
-- Author with reporter head
-- Large 3D body render of the reported player
-- YAML-style code blocks for names & UUIDs
-- Reason in a highlighted code block
-- Report ID, server, exact coordinates
-- Live Discord timestamps
-- Second embed with staff command reminders
-
----
-
-## ⚠️ About Discord Buttons
-
-True interactive buttons (Accept / Ban / Mute / etc.) require a full Discord **bot** (JDA) with a bot token and event listeners.  
-This version uses a pure **webhook** for maximum simplicity and zero extra setup.  
-A future version with optional bot support is planned.
+- Fixed fragile GUI title matching
+- Proper "Other" reason flow (type in chat, supports cancel)
+- Cleaned Discord embeds (pure webhook, no DiscordSRV leftovers)
+- Better null-safety for offline players
+- Improved staff notifications
+- More reliable cooldown + report storage
 
 ---
 
 ## License
 
-MIT – free to use, modify and distribute.
-
-Enjoy the most advanced free report system available!
+MIT
