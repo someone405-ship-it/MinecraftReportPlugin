@@ -4,6 +4,7 @@ import com.reportplugin.commands.ReportCommand;
 import com.reportplugin.commands.StaffCommands;
 import com.reportplugin.gui.GUIListener;
 import com.reportplugin.gui.ReportGUI;
+import com.reportplugin.listeners.ChatListener;
 import com.reportplugin.managers.CooldownManager;
 import com.reportplugin.managers.ReportManager;
 import com.reportplugin.utils.DiscordWebhook;
@@ -40,17 +41,18 @@ public class ReportPlugin extends JavaPlugin {
 
         // Listeners
         getServer().getPluginManager().registerEvents(new GUIListener(this, reportGUI), this);
+        getServer().getPluginManager().registerEvents(new ChatListener(this), this);
 
         getLogger().info("================================================");
         getLogger().info("  Elite Minecraft Report Plugin v" + getDescription().getVersion());
-        getLogger().info("  Features loaded:");
-        getLogger().info("  • Ultra-fancy Discord embeds + body renders");
-        getLogger().info("  • Full GUI (player heads + reason categories)");
+        getLogger().info("  Features:");
+        getLogger().info("  • Pure Discord Webhook (Reported Users)");
+        getLogger().info("  • Full GUI with player heads + categories");
+        getLogger().info("  • Custom reason via chat (Other)");
         getLogger().info("  • Global + weekly same-player cooldowns");
         getLogger().info("  • Hourly report limits");
         getLogger().info("  • Report IDs + persistent storage");
         getLogger().info("  • Staff tools (/reports, /reportview, /reportclose)");
-        getLogger().info("  • In-game staff notifications + sounds");
         getLogger().info("================================================");
     }
 
