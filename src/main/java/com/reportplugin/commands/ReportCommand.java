@@ -3,7 +3,6 @@ package com.reportplugin.commands;
 import com.reportplugin.ReportPlugin;
 import com.reportplugin.managers.CooldownManager;
 import com.reportplugin.managers.ReportManager;
-import com.reportplugin.utils.DiscordWebhook;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -64,6 +63,12 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Blacklist check
+        if (isBlacklisted(targetName)) {
+            reporter.sendMessage(color(plugin.getConfig().getString("messages.blacklisted")));
+            return true;
+        }
+
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
         if (!target.hasPlayedBefore() && !target.isOnline() && !plugin.getConfig().getBoolean("allow-offline-reports", true)) {
             reporter.sendMessage(color(plugin.getConfig().getString("messages.player-not-found").replace("%target%", targetName)));
@@ -94,13 +99,16 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
                         .replace("%time%", formatTime(remaining))));
                 return true;
             }
-            int maxHourly = plugin.getConfig().getInt("cooldowns.max-reports-per-hour", 5);
+            int maxHourly = plugin.getConfig().getInt("cooldowns.max-reports-per-hour", 6);
             if (rm.getReportsByReporterLastHour(reporterUUID) >= maxHourly) {
                 reporter.sendMessage(color(plugin.getConfig().getString("messages.hourly-limit")
                         .replace("%max%", String.valueOf(maxHourly))));
                 return true;
             }
         }
+
+        String priority = "medium"; // default for command usage
+        boolean anonymous = plugin.getConfig().getBoolean("features.anonymous-reporting", false);
 
         String reportId = rm.createReport(
                 reporterUUID, reporter.getName(),
@@ -112,22 +120,26 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
                 reporter.getLocation().getZ()
         );
 
-        DiscordWebhook webhook = plugin.getDiscordWebhook();
-        boolean success = webhook.sendReport(reporter, target, reason, reportId);
+        boolean success = plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId, priority, anonymous);
 
         if (success) {
             cm.applyGlobalCooldown(reporterUUID);
             cm.applySamePlayerCooldown(reporterUUID, targetUUID);
 
-            reporter.sendMessage(color(plugin.getConfig().getString("messages.success")
+            String msgKey = anonymous ? "messages.anonymous-success" : "messages.success";
+            reporter.sendMessage(color(plugin.getConfig().getString(msgKey)
                     .replace("%target%", target.getName() != null ? target.getName() : targetName)
                     .replace("%id%", reportId)));
 
-            // Staff notify
+            if (plugin.getConfig().getBoolean("sound-on-success", true)) {
+                reporter.playSound(reporter.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
+            }
+
             String staffMsg = plugin.getConfig().getString("messages.staff-notify", "")
-                    .replace("%reporter%", reporter.getName())
+                    .replace("%reporter%", anonymous ? "Anonymous" : reporter.getName())
                     .replace("%target%", target.getName() != null ? target.getName() : targetName)
-                    .replace("%reason%", reason);
+                    .replace("%reason%", reason)
+                    .replace("%priority%", priority.toUpperCase());
             for (Player staff : Bukkit.getOnlinePlayers()) {
                 if (staff.hasPermission(plugin.getConfig().getString("staff-permission", "reportplugin.staff"))) {
                     staff.sendMessage(color(staffMsg));
@@ -141,6 +153,15 @@ public class ReportCommand implements CommandExecutor, TabCompleter {
         }
 
         return true;
+    }
+
+    private boolean isBlacklisted(String name) {
+        if (name == null) return false;
+        List<String> list = plugin.getConfig().getStringList("features.blacklist");
+        for (String s : list) {
+            if (s.equalsIgnoreCase(name)) return true;
+        }
+        return false;
     }
 
     @Override
