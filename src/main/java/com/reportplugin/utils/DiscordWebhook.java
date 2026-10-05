@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.reportplugin.ReportPlugin;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
@@ -26,92 +25,133 @@ public class DiscordWebhook {
     }
 
     public boolean sendReport(Player reporter, OfflinePlayer target, String reason) {
+        return sendReport(reporter, target, reason, "N/A");
+    }
+
+    public boolean sendReport(Player reporter, OfflinePlayer target, String reason, String reportId) {
         String webhookUrl = plugin.getConfig().getString("webhook-url");
-        if (webhookUrl == null || webhookUrl.isEmpty() || webhookUrl.contains("YOUR_WEBHOOK")) {
-            plugin.getLogger().warning("Webhook URL is not configured properly!");
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            plugin.getLogger().warning("Webhook URL is not configured!");
             return false;
         }
 
-        // Build the fancy embed asynchronously so we don't block the main thread
         CompletableFuture.runAsync(() -> {
             try {
-                JsonObject payload = buildPayload(reporter, target, reason);
+                JsonObject payload = buildUltraFancyPayload(reporter, target, reason, reportId);
                 send(webhookUrl, payload);
             } catch (Exception e) {
                 plugin.getLogger().severe("Failed to send Discord webhook: " + e.getMessage());
                 e.printStackTrace();
             }
         });
-
-        return true; // We assume success since it's async; real error is logged
+        return true;
     }
 
-    private JsonObject buildPayload(Player reporter, OfflinePlayer target, String reason) {
+    private JsonObject buildUltraFancyPayload(Player reporter, OfflinePlayer target, String reason, String reportId) {
         String reporterName = reporter.getName();
         UUID reporterUUID = reporter.getUniqueId();
         String targetName = target.getName() != null ? target.getName() : "Unknown";
         UUID targetUUID = target.getUniqueId();
 
-        // Avatar URLs using Crafatar (high quality Minecraft skins)
-        String reporterAvatar = "https://crafatar.com/avatars/" + reporterUUID + "?size=128&overlay";
-        String targetAvatar = "https://crafatar.com/avatars/" + targetUUID + "?size=128&overlay";
         String reporterHead = "https://crafatar.com/avatars/" + reporterUUID + "?size=64&overlay";
+        String targetHead = "https://crafatar.com/avatars/" + targetUUID + "?size=128&overlay";
+        String targetBody = "https://crafatar.com/renders/body/" + targetUUID + "?scale=6&overlay";
+        String reporterBody = "https://crafatar.com/renders/body/" + reporterUUID + "?scale=4&overlay";
 
         String serverName = plugin.getConfig().getString("server-name", "Minecraft Server");
-        int color = plugin.getConfig().getInt("embed.color", 15158332);
-        String title = plugin.getConfig().getString("embed.title", "🚨 New Player Report");
-        String footer = plugin.getConfig().getString("embed.footer", "Minecraft Report System");
+        int color = plugin.getConfig().getInt("embed.color", 16711680);
+        String title = plugin.getConfig().getString("embed.title", "🚨 PLAYER REPORT RECEIVED");
+        String footer = plugin.getConfig().getString("embed.footer", "Elite Report System");
 
-        // Main embed
-        JsonObject embed = new JsonObject();
-        embed.addProperty("title", title);
-        embed.addProperty("color", color);
-        embed.addProperty("timestamp", Instant.now().toString());
+        long unix = Instant.now().getEpochSecond();
 
-        // Description with markdown
-        String description = "**A player has been reported on the server.**\n\n" +
-                "> Please review this report carefully.";
-        embed.addProperty("description", description);
+        // ========== MAIN EMBED ==========
+        JsonObject main = new JsonObject();
+        main.addProperty("title", title);
+        main.addProperty("color", color);
+        main.addProperty("timestamp", Instant.now().toString());
 
-        // Thumbnail = reported player's head
-        JsonObject thumbnail = new JsonObject();
-        thumbnail.addProperty("url", targetAvatar);
-        embed.add("thumbnail", thumbnail);
+        main.addProperty("description",
+                "```diff\n- A new player report has been submitted\n+ Staff action may be required\n```\n\n" +
+                "> **Status:** 🔴 **OPEN**\n" +
+                "> **Priority:** High");
 
-        // Author = reporter with their avatar
+        // Author = Reporter
         JsonObject author = new JsonObject();
         author.addProperty("name", "Reported by " + reporterName);
         author.addProperty("icon_url", reporterHead);
-        embed.add("author", author);
+        author.addProperty("url", "https://namemc.com/profile/" + reporterUUID);
+        main.add("author", author);
 
-        // Fields
+        // Thumbnail = reported head
+        JsonObject thumb = new JsonObject();
+        thumb.addProperty("url", targetHead);
+        main.add("thumbnail", thumb);
+
+        // Big image = body render of reported player
+        if (plugin.getConfig().getBoolean("embed.show-body-render", true)) {
+            JsonObject image = new JsonObject();
+            image.addProperty("url", targetBody);
+            main.add("image", image);
+        }
+
         JsonArray fields = new JsonArray();
 
-        fields.add(createField("👤 Reporter", "`" + reporterName + "`\nUUID: `" + reporterUUID + "`", true));
-        fields.add(createField("🎯 Reported Player", "`" + targetName + "`\nUUID: `" + targetUUID + "`", true));
-        fields.add(createField("📝 Reason", reason, false));
-        fields.add(createField("🌐 Server", serverName, true));
-        fields.add(createField("📍 World", reporter.getWorld().getName(), true));
-        fields.add(createField("🕒 Location", String.format("X: %.0f  Y: %.0f  Z: %.0f",
-                reporter.getLocation().getX(),
-                reporter.getLocation().getY(),
-                reporter.getLocation().getZ()), true));
+        fields.add(createField("👤 Reporter",
+                "```yaml\nName: " + reporterName + "\nUUID: " + reporterUUID + "\n```", true));
 
-        embed.add("fields", fields);
+        fields.add(createField("🎯 Reported Player",
+                "```yaml\nName: " + targetName + "\nUUID: " + targetUUID + "\n```", true));
 
-        // Footer
+        fields.add(createField("📝 Reason",
+                "```fix\n" + reason + "\n```", false));
+
+        fields.add(createField("🆔 Report ID", "`" + reportId + "`", true));
+        fields.add(createField("🌐 Server", "`" + serverName + "`", true));
+        fields.add(createField("📍 Location",
+                "`" + reporter.getWorld().getName() + "`\nX: `" +
+                        String.format("%.0f", reporter.getLocation().getX()) + "` " +
+                        "Y: `" + String.format("%.0f", reporter.getLocation().getY()) + "` " +
+                        "Z: `" + String.format("%.0f", reporter.getLocation().getZ()) + "`", true));
+
+        fields.add(createField("⏱️ Submitted",
+                "<t:" + unix + ":F>\n(<t:" + unix + ":R>)", true));
+
+        fields.add(createField("📊 Quick Stats",
+                "Reporter total (hour): check `/reports`", true));
+
+        main.add("fields", fields);
+
         JsonObject footerObj = new JsonObject();
         footerObj.addProperty("text", footer);
         footerObj.addProperty("icon_url", "https://crafatar.com/avatars/8667ba71-b85a-4004-af54-457a9734eed7?size=32");
-        embed.add("footer", footerObj);
+        main.add("footer", footerObj);
 
-        // Full payload
+        // ========== SECOND EMBED (Actions / Info) ==========
+        JsonObject actions = new JsonObject();
+        actions.addProperty("title", "📋 Staff Actions");
+        actions.addProperty("color", 3447003);
+        actions.addProperty("description",
+                "**In-game commands:**\n" +
+                "• `/reports` — List all open reports\n" +
+                "• `/reportview " + reportId + "` — View full details\n" +
+                "• `/reportclose " + reportId + "` — Mark as handled\n\n" +
+                "*Full interactive Discord buttons require a bot token (coming in future update).*");
+
+        // ========== PAYLOAD ==========
         JsonObject payload = new JsonObject();
-        payload.addProperty("username", "Report System");
-        payload.addProperty("avatar_url", "https://crafatar.com/avatars/8667ba71-b85a-4004-af54-457a9734eed7?size=64&overlay");
+        payload.addProperty("username", "🛡️ Elite Report System");
+        payload.addProperty("avatar_url", "https://crafatar.com/avatars/8667ba71-b85a-4004-af54-457a9734eed7?size=128&overlay");
+
+        // Optional role ping
+        String roleId = plugin.getConfig().getString("embed.mention-role-id", "");
+        if (roleId != null && !roleId.isEmpty()) {
+            payload.addProperty("content", "<@&" + roleId + "> New report submitted!");
+        }
 
         JsonArray embeds = new JsonArray();
-        embeds.add(embed);
+        embeds.add(main);
+        embeds.add(actions);
         payload.add("embeds", embeds);
 
         return payload;
@@ -130,7 +170,7 @@ public class DiscordWebhook {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("User-Agent", "MinecraftReportPlugin/1.0");
+        connection.setRequestProperty("User-Agent", "MinecraftEliteReportPlugin/2.0");
         connection.setDoOutput(true);
 
         String json = gson.toJson(payload);
@@ -140,13 +180,12 @@ public class DiscordWebhook {
             os.write(input, 0, input.length);
         }
 
-        int responseCode = connection.getResponseCode();
-        if (responseCode < 200 || responseCode >= 300) {
-            plugin.getLogger().warning("Discord webhook returned HTTP " + responseCode);
+        int code = connection.getResponseCode();
+        if (code < 200 || code >= 300) {
+            plugin.getLogger().warning("Discord webhook returned HTTP " + code);
         } else {
-            plugin.getLogger().info("Report successfully sent to Discord.");
+            plugin.getLogger().info("Ultra-fancy report sent to Discord successfully.");
         }
-
         connection.disconnect();
     }
 }
