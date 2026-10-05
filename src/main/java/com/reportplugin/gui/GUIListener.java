@@ -1,6 +1,7 @@
 package com.reportplugin.gui;
 
 import com.reportplugin.ReportPlugin;
+import com.reportplugin.listeners.ChatListener;
 import com.reportplugin.managers.CooldownManager;
 import com.reportplugin.managers.ReportManager;
 import com.reportplugin.utils.DiscordWebhook;
@@ -32,9 +33,12 @@ public class GUIListener implements Listener {
     public void onClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) return;
         Player player = (Player) event.getWhoClicked();
-        String title = ChatColor.stripColor(event.getView().getTitle());
 
-        if (!title.contains("Select a player") && !title.contains("Select a reason") && !title.contains("Confirm Report")) {
+        String rawTitle = event.getView().getTitle();
+        String title = ChatColor.stripColor(rawTitle).toLowerCase();
+
+        // Only handle our GUIs
+        if (!title.contains("select a player") && !title.contains("select a reason") && !title.contains("confirm report")) {
             return;
         }
 
@@ -44,8 +48,8 @@ public class GUIListener implements Listener {
 
         ItemMeta meta = clicked.getItemMeta();
 
-        // PLAYER SELECT
-        if (title.contains("Select a player")) {
+        // ========== PLAYER SELECT ==========
+        if (title.contains("select a player")) {
             if (clicked.getType().name().contains("BARRIER")) {
                 player.closeInventory();
                 return;
@@ -64,8 +68,8 @@ public class GUIListener implements Listener {
             return;
         }
 
-        // REASON SELECT
-        if (title.contains("Select a reason")) {
+        // ========== REASON SELECT ==========
+        if (title.contains("select a reason")) {
             if (clicked.getType().name().contains("ARROW")) {
                 gui.openPlayerSelect(player);
                 return;
@@ -77,9 +81,17 @@ public class GUIListener implements Listener {
             );
             if (reason != null) {
                 if (reason.toLowerCase().contains("other")) {
-                    player.closeInventory();
-                    player.sendMessage(color("&ePlease type the reason in chat now (or type &ccancel&e):"));
-                    gui.openConfirm(player, "Other - (player will specify)");
+                    // Start chat input mode
+                    UUID targetUUID = ReportGUI.selectedTarget.get(player.getUniqueId());
+                    if (targetUUID != null) {
+                        ChatListener.waitingForReason.put(player.getUniqueId(), targetUUID);
+                        player.closeInventory();
+                        player.sendMessage(color("&eType the reason in chat now."));
+                        player.sendMessage(color("&7Type &ccancel &7to abort."));
+                    } else {
+                        player.closeInventory();
+                        player.sendMessage(color("&cSomething went wrong. Please try again."));
+                    }
                 } else {
                     gui.openConfirm(player, reason);
                 }
@@ -87,8 +99,8 @@ public class GUIListener implements Listener {
             return;
         }
 
-        // CONFIRM
-        if (title.contains("Confirm Report")) {
+        // ========== CONFIRM ==========
+        if (title.contains("confirm report")) {
             if (clicked.getType().name().contains("RED_WOOL") || clicked.getType().name().contains("BARRIER")) {
                 player.closeInventory();
                 clearTemp(player);
@@ -150,8 +162,7 @@ public class GUIListener implements Listener {
                 reporter.getLocation().getZ()
         );
 
-        DiscordWebhook webhook = plugin.getDiscordWebhook();
-        boolean ok = webhook.sendReport(reporter, target, reason, reportId);
+        boolean ok = plugin.getDiscordWebhook().sendReport(reporter, target, reason, reportId);
 
         if (ok) {
             cm.applyGlobalCooldown(reporter.getUniqueId());
@@ -181,6 +192,7 @@ public class GUIListener implements Listener {
     private void clearTemp(Player p) {
         ReportGUI.selectedTarget.remove(p.getUniqueId());
         ReportGUI.selectedReason.remove(p.getUniqueId());
+        ChatListener.waitingForReason.remove(p.getUniqueId());
     }
 
     private String color(String msg) {
